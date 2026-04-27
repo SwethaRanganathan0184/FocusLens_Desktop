@@ -24,6 +24,7 @@ jobs:
       - name: Build Windows app
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build:win
 
       - name: Upload artifact
