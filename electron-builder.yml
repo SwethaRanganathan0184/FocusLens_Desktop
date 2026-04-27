@@ -1,0 +1,27 @@
+appId: com.focuslens.desktop
+productName: FocusLens
+copyright: Copyright © 2026
+
+directories:
+  output: dist
+
+files:
+  - main/**
+  - renderer/**
+  - node_modules/**
+  - package.json
+  - .env
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: x64
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+dmg:
+  title: FocusLens
+  window:
+    width: 540
+    height: 380

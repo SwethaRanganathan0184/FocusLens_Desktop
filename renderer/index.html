@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FocusLens</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0f0f13;
+        color: #e8e8f0;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ── Header ── */
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 28px;
+        border-bottom: 1px solid #1e1e2e;
+        background: #0a0a0f;
+        flex-shrink: 0;
+      }
+      header h1 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      header h1 span {
+        color: #7c6af7;
+      }
+      #last-updated {
+        font-size: 0.75rem;
+        color: #555;
+      }
+
+      .btn {
+        padding: 8px 18px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: opacity 0.15s;
+      }
+      .btn:hover {
+        opacity: 0.85;
+      }
+      .btn-primary {
+        background: #7c6af7;
+        color: #fff;
+      }
+      .btn-secondary {
+        background: #1e1e2e;
+        color: #aaa;
+        margin-right: 8px;
+      }
+
+      /* ── Layout ── */
+      .main {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        grid-template-rows: auto 1fr;
+        gap: 0;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      /* ── Stats bar ── */
+      .stats-bar {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 1px;
+        background: #1e1e2e;
+        border-bottom: 1px solid #1e1e2e;
+      }
+      .stat {
+        flex: 1;
+        padding: 14px 20px;
+        background: #0f0f13;
+      }
+      .stat-label {
+        font-size: 0.7rem;
+        color: #555;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 4px;
+      }
+      .stat-value {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #e8e8f0;
+      }
+      .stat-sub {
+        font-size: 0.72rem;
+        color: #666;
+        margin-top: 2px;
+      }
+
+      /* ── App list ── */
+      .app-list-panel {
+        padding: 20px 24px;
+        overflow-y: auto;
+        border-right: 1px solid #1e1e2e;
+      }
+      .panel-title {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #555;
+        margin-bottom: 14px;
+      }
+
+      .app-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid #16161f;
+      }
+      .app-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: #1e1e2e;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #7c6af7;
+        flex-shrink: 0;
+      }
+      .app-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .app-name {
+        font-size: 0.88rem;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .app-cat {
+        font-size: 0.72rem;
+        color: #555;
+        margin-top: 1px;
+      }
+      .app-bar-wrap {
+        width: 100px;
+      }
+      .app-bar-bg {
+        height: 4px;
+        background: #1e1e2e;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .app-bar-fill {
+        height: 100%;
+        border-radius: 2px;
+        background: #7c6af7;
+        transition: width 0.4s;
+      }
+      .app-time {
+        font-size: 0.8rem;
+        color: #888;
+        min-width: 36px;
+        text-align: right;
+      }
+
+      /* ── Right panel ── */
+      .right-panel {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .chart-wrap {
+        padding: 20px;
+        border-bottom: 1px solid #1e1e2e;
+        flex-shrink: 0;
+      }
+
+      .report-panel {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+      }
+      .report-panel .panel-title {
+        margin-bottom: 12px;
+      }
+
+      #report-content {
+        font-size: 0.82rem;
+        line-height: 1.7;
+        color: #aaa;
+        white-space: pre-wrap;
+      }
+      #report-content.loading {
+        color: #555;
+        font-style: italic;
+      }
+      #report-content.error {
+        color: #e05c5c;
+      }
+
+      .empty {
+        color: #444;
+        font-size: 0.82rem;
+        padding: 20px 0;
+      }
+      #report-content h2 { font-size: 0.95rem; font-weight: 600; color: #e8e8f0; margin: 16px 0 6px; }
+#report-content h3 { font-size: 0.85rem; font-weight: 600; color: #c0b8f8; margin: 14px 0 4px; }
+#report-content p  { margin-bottom: 8px; }
+#report-content strong { color: #e8e8f0; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1><span>Focus</span>Lens</h1>
+      <span id="last-updated">Loading...</span>
+      <div>
+        <button class="btn btn-secondary" onclick="loadData()">Refresh</button>
+        <button class="btn btn-primary" onclick="getReport()">
+          Generate Report
+        </button>
+      </div>
+    </header>
+
+    <div class="main">
+      <!-- Stats bar -->
+      <div class="stats-bar">
+        <div class="stat">
+          <div class="stat-label">Total tracked</div>
+          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-sub">today</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Apps used</div>
+          <div class="stat-value" id="stat-apps">—</div>
+          <div class="stat-sub">distinct apps</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Most used</div>
+          <div class="stat-value" id="stat-top">—</div>
+          <div class="stat-sub" id="stat-top-time">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">App switches</div>
+          <div class="stat-value" id="stat-switches">—</div>
+          <div class="stat-sub">total today</div>
+        </div>
+      </div>
+
+      <!-- App list -->
+      <div class="app-list-panel">
+        <div class="panel-title">App usage — today</div>
+        <div id="app-list"><div class="empty">Loading...</div></div>
+      </div>
+
+      <!-- Right: chart + report -->
+      <div class="right-panel">
+        <div class="chart-wrap">
+          <div class="panel-title">By category</div>
+          <canvas id="cat-chart" height="160"></canvas>
+        </div>
+        <div class="report-panel">
+          <div class="panel-title">AI daily report</div>
+          <div id="report-content" class="loading">
+            Click "Generate Report" to get your AI summary.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let catChart = null;
+
+      const CATEGORY_COLORS = {
+        Browser: "#7c6af7",
+        Development: "#4fc4a0",
+        Communication: "#f7a84a",
+        Meetings: "#e05c5c",
+        Productivity: "#5cb8f7",
+        Design: "#f75c9d",
+        Entertainment: "#a0e05c",
+        System: "#555577",
+        Other: "#333355",
+      };
+
+      function msToReadable(ms) {
+        const mins = Math.floor(ms / 60000);
+        if (mins < 1) return "<1m";
+        if (mins < 60) return `${mins}m`;
+        const hrs = Math.floor(mins / 60);
+        const rem = mins % 60;
+        return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
+      }
+
+      function initials(name) {
+        return (
+          name
+            .replace(/[^a-zA-Z0-9 ]/g, "")
+            .trim()
+            .split(" ")
+            .map((w) => w[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "??"
+        );
+      }
+      function formatReport(text) {
+  return text
+    .replace(/^## \*?\*?(.+?)\*?\*?$/gm, '<h3>$1</h3>')
+    .replace(/^# \*?\*?(.+?)\*?\*?$/gm, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^/, '<p>')
+    .replace(/$/, '</p>')
+}
+      async function loadData() {
+        const data = await window.focusAPI.getTodaySummary();
+        if (!data || data.length === 0) {
+          document.getElementById("app-list").innerHTML =
+            '<div class="empty">No activity recorded yet today.</div>';
+          return;
+        }
+
+        // Stats bar
+        const totalMs = data.reduce((s, a) => s + a.total_ms, 0);
+        const totalSwitch = data.reduce((s, a) => s + a.switches, 0);
+        const top = data[0];
+        document.getElementById("stat-total").textContent =
+          msToReadable(totalMs);
+        document.getElementById("stat-apps").textContent = data.length;
+        document.getElementById("stat-top").textContent = top.app_name;
+        document.getElementById("stat-top-time").textContent = msToReadable(
+          top.total_ms,
+        );
+        document.getElementById("stat-switches").textContent = totalSwitch;
+        document.getElementById("last-updated").textContent =
+          "Updated " + new Date().toLocaleTimeString();
+
+        // App list
+        const maxMs = data[0].total_ms;
+        document.getElementById("app-list").innerHTML = data
+          .map(
+            (a) => `
+          <div class="app-row">
+            <div class="app-icon">${initials(a.app_name)}</div>
+            <div class="app-info">
+              <div class="app-name">${a.app_name}</div>
+              <div class="app-cat">${a.category} · ${a.switches} session${a.switches !== 1 ? "s" : ""}</div>
+            </div>
+            <div class="app-bar-wrap">
+              <div class="app-bar-bg">
+                <div class="app-bar-fill" style="width:${Math.round((a.total_ms / maxMs) * 100)}%;
+                  background:${CATEGORY_COLORS[a.category] || "#7c6af7"}"></div>
+              </div>
+            </div>
+            <div class="app-time">${msToReadable(a.total_ms)}</div>
+          </div>
+        `,
+          )
+          .join("");
+
+        // Category chart
+        const cats = {};
+        data.forEach((a) => {
+          cats[a.category] = (cats[a.category] || 0) + a.total_ms;
+        });
+        const labels = Object.keys(cats);
+        const values = labels.map((l) => Math.round(cats[l] / 60000));
+        const colors = labels.map((l) => CATEGORY_COLORS[l] || "#7c6af7");
+
+        if (catChart) catChart.destroy();
+        catChart = new Chart(document.getElementById("cat-chart"), {
+          type: "doughnut",
+          data: {
+            labels,
+            datasets: [
+              { data: values, backgroundColor: colors, borderWidth: 0 },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: "right",
+                labels: { color: "#888", font: { size: 11 }, boxWidth: 12 },
+              },
+              tooltip: {
+                callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed}m` },
+              },
+            },
+          },
+        });
+      }
+
+      async function getReport() {
+        const el = document.getElementById("report-content");
+        el.className = "loading";
+        el.textContent =
+          "Generating your AI report... this takes a few seconds.";
+
+        try {
+          const result = await window.focusAPI.generateReport();
+          if (result.error) {
+            el.className = "error";
+            el.textContent = result.error;
+          } else {
+            el.className = "";
+            el.innerHTML = formatReport(result.ai_report)
+          }
+        } catch (err) {
+          el.className = "error";
+          el.textContent = "Failed to generate report: " + err.message;
+        }
+      }
+
+      // Load on start, then refresh every 30 seconds
+      loadData();
+      setInterval(loadData, 30000);
+    </script>
+  </body>
+</html>
