@@ -1,5 +1,5 @@
 const { shell, dialog, app } = require('electron')
-const permissions = require('node-mac-permissions')
+const permissions = process.platform === 'darwin' ? require('node-mac-permissions') : null
 
 async function checkAndRequestPermissions() {
   // Only needed on macOS
