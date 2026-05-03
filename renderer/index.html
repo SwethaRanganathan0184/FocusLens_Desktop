@@ -1,439 +1,561 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FocusLens</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FocusLens</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root[data-theme="dark"] {
+      --bg: #0f0f13;
+      --bg-deep: #0a0a0f;
+      --bg-card: #1e1e2e;
+      --bg-row: #16161f;
+      --border: #1e1e2e;
+      --text: #e8e8f0;
+      --text-muted: #888;
+      --text-dim: #555;
+      --accent: #7c6af7;
+      --accent-soft: #2a2440;
+      --btn-secondary-bg: #1e1e2e;
+      --btn-secondary-color: #aaa;
+      --legend-color: #888;
+    }
+    :root[data-theme="light"] {
+      --bg: #f4f4f8;
+      --bg-deep: #ffffff;
+      --bg-card: #ffffff;
+      --bg-row: #f0f0f5;
+      --border: #e0e0ec;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --text-dim: #999;
+      --accent: #6c5ce7;
+      --accent-soft: #ede9ff;
+      --btn-secondary-bg: #e8e8f0;
+      --btn-secondary-color: #555;
+      --legend-color: #555;
+    }
 
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #0f0f13;
-        color: #e8e8f0;
-        height: 100vh;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-      }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-      /* ── Header ── */
-      header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px 28px;
-        border-bottom: 1px solid #1e1e2e;
-        background: #0a0a0f;
-        flex-shrink: 0;
-      }
-      header h1 {
-        font-size: 1.2rem;
-        font-weight: 600;
-        letter-spacing: 0.02em;
-      }
-      header h1 span {
-        color: #7c6af7;
-      }
-      #last-updated {
-        font-size: 0.75rem;
-        color: #555;
-      }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.2s, color 0.2s;
+    }
 
-      .btn {
-        padding: 8px 18px;
-        border-radius: 8px;
-        border: none;
-        cursor: pointer;
-        font-size: 0.85rem;
-        font-weight: 500;
-        transition: opacity 0.15s;
-      }
-      .btn:hover {
-        opacity: 0.85;
-      }
-      .btn-primary {
-        background: #7c6af7;
-        color: #fff;
-      }
-      .btn-secondary {
-        background: #1e1e2e;
-        color: #aaa;
-        margin-right: 8px;
-      }
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-deep);
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 600; letter-spacing: 0.02em; }
+    header h1 span { color: var(--accent); }
+    #last-updated { font-size: 0.75rem; color: var(--text-dim); }
 
-      /* ── Layout ── */
-      .main {
-        display: grid;
-        grid-template-columns: 1fr 340px;
-        grid-template-rows: auto 1fr;
-        gap: 0;
-        flex: 1;
-        overflow: hidden;
-      }
+    .header-right { display: flex; align-items: center; gap: 8px; }
 
-      /* ── Stats bar ── */
-      .stats-bar {
-        grid-column: 1 / -1;
-        display: flex;
-        gap: 1px;
-        background: #1e1e2e;
-        border-bottom: 1px solid #1e1e2e;
-      }
-      .stat {
-        flex: 1;
-        padding: 14px 20px;
-        background: #0f0f13;
-      }
-      .stat-label {
-        font-size: 0.7rem;
-        color: #555;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        margin-bottom: 4px;
-      }
-      .stat-value {
-        font-size: 1.4rem;
-        font-weight: 600;
-        color: #e8e8f0;
-      }
-      .stat-sub {
-        font-size: 0.72rem;
-        color: #666;
-        margin-top: 2px;
-      }
+    /* Theme toggle */
+    .theme-toggle {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .theme-toggle:hover { background: var(--accent-soft); }
 
-      /* ── App list ── */
-      .app-list-panel {
-        padding: 20px 24px;
-        overflow-y: auto;
-        border-right: 1px solid #1e1e2e;
-      }
-      .panel-title {
-        font-size: 0.72rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #555;
-        margin-bottom: 14px;
-      }
+    .btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--btn-secondary-bg); color: var(--btn-secondary-color); }
 
-      .app-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 0;
-        border-bottom: 1px solid #16161f;
-      }
-      .app-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        background: #1e1e2e;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #7c6af7;
-        flex-shrink: 0;
-      }
-      .app-info {
-        flex: 1;
-        min-width: 0;
-      }
-      .app-name {
-        font-size: 0.88rem;
-        font-weight: 500;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .app-cat {
-        font-size: 0.72rem;
-        color: #555;
-        margin-top: 1px;
-      }
-      .app-bar-wrap {
-        width: 100px;
-      }
-      .app-bar-bg {
-        height: 4px;
-        background: #1e1e2e;
-        border-radius: 2px;
-        overflow: hidden;
-      }
-      .app-bar-fill {
-        height: 100%;
-        border-radius: 2px;
-        background: #7c6af7;
-        transition: width 0.4s;
-      }
-      .app-time {
-        font-size: 0.8rem;
-        color: #888;
-        min-width: 36px;
-        text-align: right;
-      }
+    /* ── Layout ── */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      grid-template-rows: auto 1fr;
+      flex: 1;
+      overflow: hidden;
+    }
 
-      /* ── Right panel ── */
-      .right-panel {
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
+    /* ── Stats bar ── */
+    .stats-bar {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 1px;
+      background: var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stat { flex: 1; padding: 14px 20px; background: var(--bg); }
+    .stat-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .stat-value { font-size: 1.4rem; font-weight: 600; color: var(--text); }
+    .stat-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
 
-      .chart-wrap {
-        padding: 20px;
-        border-bottom: 1px solid #1e1e2e;
-        flex-shrink: 0;
-      }
+    /* ── App list ── */
+    .app-list-panel {
+      padding: 20px 24px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+    }
+    .panel-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
 
-      .report-panel {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-      }
-      .report-panel .panel-title {
-        margin-bottom: 12px;
-      }
+    .app-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--bg-row);
+      cursor: default;
+    }
+    .app-row.is-browser {
+      cursor: pointer;
+      transition: background 0.15s;
+      border-radius: 6px;
+      padding: 10px 8px;
+      margin: 0 -8px;
+    }
+    .app-row.is-browser:hover { background: var(--accent-soft); }
 
-      #report-content {
-        font-size: 0.82rem;
-        line-height: 1.7;
-        color: #aaa;
-        white-space: pre-wrap;
-      }
-      #report-content.loading {
-        color: #555;
-        font-style: italic;
-      }
-      #report-content.error {
-        color: #e05c5c;
-      }
+    .browser-badge {
+      font-size: 0.65rem;
+      background: var(--accent);
+      color: #fff;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 4px;
+    }
 
-      .empty {
-        color: #444;
-        font-size: 0.82rem;
-        padding: 20px 0;
-      }
-      #report-content h2 { font-size: 0.95rem; font-weight: 600; color: #e8e8f0; margin: 16px 0 6px; }
-#report-content h3 { font-size: 0.85rem; font-weight: 600; color: #c0b8f8; margin: 14px 0 4px; }
-#report-content p  { margin-bottom: 8px; }
-#report-content strong { color: #e8e8f0; }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1><span>Focus</span>Lens</h1>
-      <span id="last-updated">Loading...</span>
-      <div>
-        <button class="btn btn-secondary" onclick="loadData()">Refresh</button>
-        <button class="btn btn-primary" onclick="getReport()">
-          Generate Report
-        </button>
+    .app-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: var(--bg-card);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 600;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .app-info { flex: 1; min-width: 0; }
+    .app-name { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .app-cat { font-size: 0.72rem; color: var(--text-dim); margin-top: 1px; }
+    .app-bar-wrap { width: 100px; }
+    .app-bar-bg { height: 4px; background: var(--bg-card); border-radius: 2px; overflow: hidden; }
+    .app-bar-fill { height: 100%; border-radius: 2px; background: var(--accent); transition: width 0.4s; }
+    .app-time { font-size: 0.8rem; color: var(--text-muted); min-width: 36px; text-align: right; }
+
+    /* ── Browser drill-down modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg-deep);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 560px;
+      max-height: 75vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-header h2 { font-size: 1rem; font-weight: 600; }
+    .modal-close {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      border: none;
+      background: var(--bg-card);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-close:hover { background: var(--accent-soft); }
+    .modal-body { overflow-y: auto; padding: 20px 24px; }
+
+    .category-group { margin-bottom: 20px; }
+    .category-group-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .category-group-time {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-weight: normal;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .tab-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--bg-row);
+      gap: 12px;
+    }
+    .tab-title {
+      font-size: 0.82rem;
+      color: var(--text);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tab-time { font-size: 0.78rem; color: var(--text-muted); flex-shrink: 0; }
+
+    /* ── Right panel ── */
+    .right-panel { display: flex; flex-direction: column; overflow: hidden; }
+    .chart-wrap { padding: 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .report-panel { flex: 1; overflow-y: auto; padding: 20px; }
+    .report-panel .panel-title { margin-bottom: 12px; }
+
+    #report-content {
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: var(--text-muted);
+      white-space: pre-wrap;
+    }
+    #report-content.loading { color: var(--text-dim); font-style: italic; }
+    #report-content.error { color: #e05c5c; }
+    #report-content h2 { font-size: 0.95rem; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+    #report-content h3 { font-size: 0.85rem; font-weight: 600; color: var(--accent); margin: 14px 0 4px; }
+    #report-content p { margin-bottom: 8px; }
+    #report-content strong { color: var(--text); }
+
+    .empty { color: var(--text-dim); font-size: 0.82rem; padding: 20px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><span>Focus</span>Lens</h1>
+    <span id="last-updated">Loading...</span>
+    <div class="header-right">
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+      <button class="btn btn-secondary" onclick="loadData()">Refresh</button>
+      <button class="btn btn-primary" onclick="getReport()">Generate Report</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-label">Total tracked</div>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-sub">today</div>
       </div>
-    </header>
-
-    <div class="main">
-      <!-- Stats bar -->
-      <div class="stats-bar">
-        <div class="stat">
-          <div class="stat-label">Total tracked</div>
-          <div class="stat-value" id="stat-total">—</div>
-          <div class="stat-sub">today</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Apps used</div>
-          <div class="stat-value" id="stat-apps">—</div>
-          <div class="stat-sub">distinct apps</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Most used</div>
-          <div class="stat-value" id="stat-top">—</div>
-          <div class="stat-sub" id="stat-top-time">—</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">App switches</div>
-          <div class="stat-value" id="stat-switches">—</div>
-          <div class="stat-sub">total today</div>
-        </div>
+      <div class="stat">
+        <div class="stat-label">Apps used</div>
+        <div class="stat-value" id="stat-apps">—</div>
+        <div class="stat-sub">distinct apps</div>
       </div>
-
-      <!-- App list -->
-      <div class="app-list-panel">
-        <div class="panel-title">App usage — today</div>
-        <div id="app-list"><div class="empty">Loading...</div></div>
+      <div class="stat">
+        <div class="stat-label">Most used</div>
+        <div class="stat-value" id="stat-top">—</div>
+        <div class="stat-sub" id="stat-top-time">—</div>
       </div>
-
-      <!-- Right: chart + report -->
-      <div class="right-panel">
-        <div class="chart-wrap">
-          <div class="panel-title">By category</div>
-          <canvas id="cat-chart" height="160"></canvas>
-        </div>
-        <div class="report-panel">
-          <div class="panel-title">AI daily report</div>
-          <div id="report-content" class="loading">
-            Click "Generate Report" to get your AI summary.
-          </div>
-        </div>
+      <div class="stat">
+        <div class="stat-label">App switches</div>
+        <div class="stat-value" id="stat-switches">—</div>
+        <div class="stat-sub">total today</div>
       </div>
     </div>
 
-    <script>
-      let catChart = null;
+    <!-- App list -->
+    <div class="app-list-panel">
+      <div class="panel-title">App usage — today</div>
+      <div id="app-list"><div class="empty">Loading...</div></div>
+    </div>
 
-      const CATEGORY_COLORS = {
-        Browser: "#7c6af7",
-        Development: "#4fc4a0",
-        Communication: "#f7a84a",
-        Meetings: "#e05c5c",
-        Productivity: "#5cb8f7",
-        Design: "#f75c9d",
-        Entertainment: "#a0e05c",
-        System: "#555577",
-        Other: "#333355",
-      };
+    <!-- Right: chart + report -->
+    <div class="right-panel">
+      <div class="chart-wrap">
+        <div class="panel-title">By category</div>
+        <canvas id="cat-chart" height="160"></canvas>
+      </div>
+      <div class="report-panel">
+        <div class="panel-title">AI daily report</div>
+        <div id="report-content" class="loading">
+          Click "Generate Report" to get your AI summary.
+        </div>
+      </div>
+    </div>
+  </div>
 
-      function msToReadable(ms) {
-        const mins = Math.floor(ms / 60000);
-        if (mins < 1) return "<1m";
-        if (mins < 60) return `${mins}m`;
-        const hrs = Math.floor(mins / 60);
-        const rem = mins % 60;
-        return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
+  <!-- Browser drill-down modal -->
+  <div class="modal-overlay" id="browser-modal" onclick="closeModal(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Browser Activity</h2>
+        <button class="modal-close" onclick="closeBrowserModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <div class="empty">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let catChart = null;
+    let isDark = true;
+
+    const CATEGORY_COLORS = {
+      Browser: "#7c6af7",
+      Development: "#4fc4a0",
+      Communication: "#f7a84a",
+      Meetings: "#e05c5c",
+      Productivity: "#5cb8f7",
+      Design: "#f75c9d",
+      Entertainment: "#a0e05c",
+      System: "#555577",
+      News: "#f7c948",
+      "Social Media": "#f75c9d",
+      Shopping: "#fc8c4a",
+      Finance: "#4af7a8",
+      Search: "#f7c948",
+      Other: "#444466",
+    };
+
+    const BROWSERS = [
+      'Google Chrome', 'Safari', 'Firefox', 'Brave Browser',
+      'Microsoft Edge', 'Opera', 'Arc', 'Vivaldi', 'Chromium'
+    ];
+
+    function msToReadable(ms) {
+      const mins = Math.floor(ms / 60000);
+      if (mins < 1) return "<1m";
+      if (mins < 60) return `${mins}m`;
+      const hrs = Math.floor(mins / 60);
+      const rem = mins % 60;
+      return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
+    }
+
+    function initials(name) {
+      return name.replace(/[^a-zA-Z0-9 ]/g, "").trim()
+        .split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "??";
+    }
+
+    function formatReport(text) {
+      return text
+        .replace(/^## \*?\*?(.+?)\*?\*?$/gm, '<h3>$1</h3>')
+        .replace(/^# \*?\*?(.+?)\*?\*?$/gm, '<h2>$1</h2>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/^/, '<p>').replace(/$/, '</p>')
+    }
+
+    function toggleTheme() {
+      isDark = !isDark;
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      document.querySelector('.theme-toggle').textContent = isDark ? '🌙' : '☀️';
+      if (catChart) loadData();
+    }
+
+    // ── Browser drill-down ──
+    async function openBrowserDrilldown(browserName) {
+      document.getElementById('modal-title').textContent = `${browserName} — Tab Activity`;
+      document.getElementById('modal-body').innerHTML = '<div class="empty">Loading...</div>';
+      document.getElementById('browser-modal').classList.add('open');
+
+      const sessions = await window.focusAPI.getBrowserSessions();
+      const filtered = sessions.filter(s => s.browser === browserName && s.tab_title && s.tab_title.trim().length > 2)
+
+      if (filtered.length === 0) {
+        document.getElementById('modal-body').innerHTML =
+          '<div class="empty">No tab activity recorded yet for this browser today.</div>';
+        return;
+      }
+      
+
+      // Group by category
+      const byCategory = {};
+      for (const s of filtered) {
+        const cat = s.category || 'Other';
+        if (!byCategory[cat]) byCategory[cat] = [];
+        byCategory[cat].push(s);
       }
 
-      function initials(name) {
-        return (
-          name
-            .replace(/[^a-zA-Z0-9 ]/g, "")
-            .trim()
-            .split(" ")
-            .map((w) => w[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase() || "??"
-        );
+      // Sort categories by total time
+      const sorted = Object.entries(byCategory)
+        .map(([cat, tabs]) => ({
+          cat,
+          total_ms: tabs.reduce((s, t) => s + (t.duration_ms || 0), 0),
+          tabs
+        }))
+        .sort((a, b) => {
+  if (a.cat === 'Other') return 1
+  if (b.cat === 'Other') return -1
+  return b.total_ms - a.total_ms
+})
+
+      document.getElementById('modal-body').innerHTML = sorted.map(group => `
+        <div class="category-group">
+          <div class="category-group-title" style="color:${CATEGORY_COLORS[group.cat] || '#7c6af7'}">
+            ${group.cat}
+            <span class="category-group-time">${msToReadable(group.total_ms)}</span>
+          </div>
+          ${group.tabs
+            .sort((a, b) => (b.duration_ms || 0) - (a.duration_ms || 0))
+            .map(t => `
+              <div class="tab-row">
+                <div class="tab-title">${t.tab_title}</div>
+                <div class="tab-time">${msToReadable(t.duration_ms || 0)}</div>
+              </div>
+            `).join('')}
+        </div>
+      `).join('');
+    }
+
+    function closeBrowserModal() {
+      document.getElementById('browser-modal').classList.remove('open');
+    }
+
+    function closeModal(e) {
+      if (e.target === document.getElementById('browser-modal')) closeBrowserModal();
+    }
+
+    // ── Load data ──
+    async function loadData() {
+      const data = await window.focusAPI.getTodaySummary();
+      if (!data || data.length === 0) {
+        document.getElementById("app-list").innerHTML =
+          '<div class="empty">No activity recorded yet today.</div>';
+        return;
       }
-      function formatReport(text) {
-  return text
-    .replace(/^## \*?\*?(.+?)\*?\*?$/gm, '<h3>$1</h3>')
-    .replace(/^# \*?\*?(.+?)\*?\*?$/gm, '<h2>$1</h2>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/^/, '<p>')
-    .replace(/$/, '</p>')
-}
-      async function loadData() {
-        const data = await window.focusAPI.getTodaySummary();
-        if (!data || data.length === 0) {
-          document.getElementById("app-list").innerHTML =
-            '<div class="empty">No activity recorded yet today.</div>';
-          return;
-        }
 
-        // Stats bar
-        const totalMs = data.reduce((s, a) => s + a.total_ms, 0);
-        const totalSwitch = data.reduce((s, a) => s + a.switches, 0);
-        const top = data[0];
-        document.getElementById("stat-total").textContent =
-          msToReadable(totalMs);
-        document.getElementById("stat-apps").textContent = data.length;
-        document.getElementById("stat-top").textContent = top.app_name;
-        document.getElementById("stat-top-time").textContent = msToReadable(
-          top.total_ms,
-        );
-        document.getElementById("stat-switches").textContent = totalSwitch;
-        document.getElementById("last-updated").textContent =
-          "Updated " + new Date().toLocaleTimeString();
+      // Stats
+      const totalMs = data.reduce((s, a) => s + a.total_ms, 0);
+      const totalSwitch = data.reduce((s, a) => s + a.switches, 0);
+      const top = data[0];
+      document.getElementById("stat-total").textContent = msToReadable(totalMs);
+      document.getElementById("stat-apps").textContent = data.length;
+      document.getElementById("stat-top").textContent = top.app_name;
+      document.getElementById("stat-top-time").textContent = msToReadable(top.total_ms);
+      document.getElementById("stat-switches").textContent = totalSwitch;
+      document.getElementById("last-updated").textContent = "Updated " + new Date().toLocaleTimeString();
 
-        // App list
-        const maxMs = data[0].total_ms;
-        document.getElementById("app-list").innerHTML = data
-          .map(
-            (a) => `
-          <div class="app-row">
+      // App list
+      const maxMs = data[0].total_ms;
+      document.getElementById("app-list").innerHTML = data.map(a => {
+        const isBrowser = BROWSERS.includes(a.app_name);
+        return `
+          <div class="app-row ${isBrowser ? 'is-browser' : ''}"
+            ${isBrowser ? `onclick="openBrowserDrilldown('${a.app_name}')"` : ''}>
             <div class="app-icon">${initials(a.app_name)}</div>
             <div class="app-info">
-              <div class="app-name">${a.app_name}</div>
+              <div class="app-name">
+                ${a.app_name}
+                ${isBrowser ? '<span class="browser-badge">tabs ›</span>' : ''}
+              </div>
               <div class="app-cat">${a.category} · ${a.switches} session${a.switches !== 1 ? "s" : ""}</div>
             </div>
             <div class="app-bar-wrap">
               <div class="app-bar-bg">
                 <div class="app-bar-fill" style="width:${Math.round((a.total_ms / maxMs) * 100)}%;
-                  background:${CATEGORY_COLORS[a.category] || "#7c6af7"}"></div>
+                  background:${CATEGORY_COLORS[a.category] || '#7c6af7'}"></div>
               </div>
             </div>
             <div class="app-time">${msToReadable(a.total_ms)}</div>
-          </div>
-        `,
-          )
-          .join("");
+          </div>`;
+      }).join("");
 
-        // Category chart
-        const cats = {};
-        data.forEach((a) => {
-          cats[a.category] = (cats[a.category] || 0) + a.total_ms;
-        });
-        const labels = Object.keys(cats);
-        const values = labels.map((l) => Math.round(cats[l] / 60000));
-        const colors = labels.map((l) => CATEGORY_COLORS[l] || "#7c6af7");
+      // Chart
+      const cats = {};
+      data.forEach(a => { cats[a.category] = (cats[a.category] || 0) + a.total_ms; });
+      const labels = Object.keys(cats);
+      const values = labels.map(l => Math.round(cats[l] / 60000));
+      const colors = labels.map(l => CATEGORY_COLORS[l] || "#7c6af7");
 
-        if (catChart) catChart.destroy();
-        catChart = new Chart(document.getElementById("cat-chart"), {
-          type: "doughnut",
-          data: {
-            labels,
-            datasets: [
-              { data: values, backgroundColor: colors, borderWidth: 0 },
-            ],
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: {
-                position: "right",
-                labels: { color: "#888", font: { size: 11 }, boxWidth: 12 },
-              },
-              tooltip: {
-                callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed}m` },
-              },
+      if (catChart) catChart.destroy();
+      catChart = new Chart(document.getElementById("cat-chart"), {
+        type: "doughnut",
+        data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: "right",
+              labels: {
+                color: isDark ? "#888" : "#555",
+                font: { size: 11 },
+                boxWidth: 12
+              }
             },
-          },
-        });
-      }
-
-      async function getReport() {
-        const el = document.getElementById("report-content");
-        el.className = "loading";
-        el.textContent =
-          "Generating your AI report... this takes a few seconds.";
-
-        try {
-          const result = await window.focusAPI.generateReport();
-          if (result.error) {
-            el.className = "error";
-            el.textContent = result.error;
-          } else {
-            el.className = "";
-            el.innerHTML = formatReport(result.ai_report)
+            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}m` } }
           }
-        } catch (err) {
-          el.className = "error";
-          el.textContent = "Failed to generate report: " + err.message;
         }
-      }
+      });
+    }
 
-      // Load on start, then refresh every 30 seconds
-      loadData();
-      setInterval(loadData, 30000);
-    </script>
-  </body>
+    async function getReport() {
+      const el = document.getElementById("report-content");
+      el.className = "loading";
+      el.textContent = "Generating your AI report... this takes a few seconds.";
+      try {
+        const result = await window.focusAPI.generateReport();
+        if (result.error) {
+          el.className = "error";
+          el.textContent = result.error;
+        } else {
+          el.className = "";
+          el.innerHTML = formatReport(result.ai_report);
+        }
+      } catch (err) {
+        el.className = "error";
+        el.textContent = "Failed to generate report: " + err.message;
+      }
+    }
+
+    loadData();
+    setInterval(loadData, 30000);
+  </script>
+</body>
 </html>

@@ -40,6 +40,30 @@ function initDB() {
     )
   `)
 
+
+  // Table 3: browser tab sessions
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS browser_sessions (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      browser       TEXT NOT NULL,
+      tab_title     TEXT NOT NULL,
+      category      TEXT DEFAULT 'Uncategorized',
+      started_at    INTEGER NOT NULL,
+      ended_at      INTEGER,
+      duration_ms   INTEGER
+    )
+  `)
+
+  // Table 4: site category cache (avoid repeated Groq calls)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS site_categories (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      tab_title   TEXT NOT NULL UNIQUE,
+      category    TEXT NOT NULL,
+      source      TEXT DEFAULT 'manual'
+    )
+  `)
+
   console.log('Database ready at:', DB_PATH)
   return db
 }
@@ -84,4 +108,51 @@ function getTodayMeetingEvents() {
   `).all(startOfDay.getTime())
 }
 
-module.exports = { initDB, insertSession, insertMeetingEvent, getTodaySessions, getTodayMeetingEvents }
+
+// Insert a browser tab session
+function insertBrowserSession(session) {
+  const stmt = db.prepare(`
+    INSERT INTO browser_sessions (browser, tab_title, category, started_at, ended_at, duration_ms)
+    VALUES (@browser, @tab_title, @category, @started_at, @ended_at, @duration_ms)
+  `)
+  return stmt.run(session)
+}
+
+// Get today's browser sessions
+function getTodayBrowserSessions() {
+  const startOfDay = new Date()
+  startOfDay.setHours(0, 0, 0, 0)
+  return db.prepare(`
+    SELECT * FROM browser_sessions
+    WHERE started_at >= ?
+    ORDER BY started_at ASC
+  `).all(startOfDay.getTime())
+}
+
+// Get cached category for a tab title
+function getCachedCategory(tabTitle) {
+  return db.prepare(`
+    SELECT category FROM site_categories WHERE tab_title = ?
+  `).get(tabTitle)
+}
+
+// Save a category to cache
+function saveCategoryCache(tabTitle, category, source = 'manual') {
+  const stmt = db.prepare(`
+    INSERT OR REPLACE INTO site_categories (tab_title, category, source)
+    VALUES (?, ?, ?)
+  `)
+  return stmt.run(tabTitle, category, source)
+}
+
+module.exports = { 
+  initDB, 
+  insertSession, 
+  insertMeetingEvent, 
+  getTodaySessions, 
+  getTodayMeetingEvents,
+  insertBrowserSession,
+  getTodayBrowserSessions,
+  getCachedCategory,
+  saveCategoryCache
+}

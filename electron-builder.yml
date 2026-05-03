@@ -19,6 +19,7 @@ mac:
       arch: x64
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  icon: build/icon.icns
 
 dmg:
   title: FocusLens

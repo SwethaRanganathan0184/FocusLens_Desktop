@@ -1,4 +1,4 @@
-const { getTodaySessions, getTodayMeetingEvents } = require('./db')
+const { getTodaySessions, getTodayMeetingEvents, getTodayBrowserSessions } = require('./db')
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY 
 
@@ -59,6 +59,19 @@ function summariseMeetings(events) {
   return Object.values(meetings)
 }
 
+// Summarise browser sessions by category
+function summariseBrowserSessions(browserSessions) {
+  const byCategory = {}
+  for (const s of browserSessions) {
+    const cat = s.category || 'Other'
+    if (!byCategory[cat]) {
+      byCategory[cat] = { category: cat, total_ms: 0, tabs: [] }
+    }
+    byCategory[cat].total_ms += s.duration_ms || 0
+    byCategory[cat].tabs.push(s.tab_title)
+  }
+  return Object.values(byCategory).sort((a, b) => b.total_ms - a.total_ms)
+}
 function msToReadable(ms) {
   const mins = Math.floor(ms / 60000)
   if (mins < 60) return `${mins}m`
@@ -70,7 +83,9 @@ function msToReadable(ms) {
 async function generateDailyReport() {
   const sessions = getTodaySessions()
   const meetingEvents = getTodayMeetingEvents()
-
+  const browserSessions = getTodayBrowserSessions()
+  const browserSummary = summariseBrowserSessions(browserSessions)
+  
   if (sessions.length === 0) {
     return { error: 'No activity recorded today yet.' }
   }
@@ -88,19 +103,28 @@ async function generateDailyReport() {
         `- ${m.title}: switched away ${m.switch_aways} time(s) to [${[...new Set(m.apps_switched_to)].join(', ')}]`
       ).join('\n')
     : 'No meetings detected today.'
-
+  const browserLines = browserSummary.length > 0
+    ? browserSummary.map(b =>
+        `- ${b.category}: ${msToReadable(b.total_ms)} (${[...new Set(b.tabs)].slice(0, 3).join(', ')}${b.tabs.length > 3 ? '...' : ''})`
+      ).join('\n')
+    : 'No browser activity recorded today.'
+  
   const prompt = `You are a productivity coach analyzing someone's workday. Based on their app usage data, write a friendly, insightful daily report in 3 sections:
 
 1. **Day Overview** — 2-3 sentences summarising how the day looked overall
 2. **Focus Analysis** — What they spent most time on, any concerning patterns (too much switching, entertainment during work hours etc.)
 3. **Meeting Behaviour** — How focused they were during meetings, how many times they got distracted
 4. **One actionable tip** for tomorrow
+5. **Browser Usage** — What kind of content they browsed, any distracting patterns
 
 App usage today:
 ${appLines}
 
 Meeting distractions today:
 ${meetingLines}
+
+Browser activity today:
+${browserLines}
 
 Keep the tone warm and constructive, not judgmental. Be specific with the numbers.`
 
@@ -126,6 +150,7 @@ Keep the tone warm and constructive, not judgmental. Be specific with the number
       generated_at: new Date().toISOString(),
       app_summary: appSummary,
       meeting_summary: meetingSummary,
+      browser_summary: browserSummary,
       ai_report: text
     }
 
@@ -135,6 +160,7 @@ Keep the tone warm and constructive, not judgmental. Be specific with the number
       generated_at: new Date().toISOString(),
       app_summary: appSummary,
       meeting_summary: meetingSummary,
+      browser_summary: browserSummary,
       ai_report: 'AI report unavailable — check your API key.'
     }
   }

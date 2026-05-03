@@ -1,5 +1,6 @@
 const activeWin = require('active-win')
-const { insertSession, insertMeetingEvent } = require('./db')
+const { insertSession, insertMeetingEvent, insertBrowserSession } = require('./db')
+const { categorizeTab } = require('./categorizer')
 
 // Apps that indicate an active meeting
 
@@ -25,6 +26,41 @@ const MEETING_TITLE_PATTERNS = [
   /meeting/i, /call/i, /\| microsoft teams/i,
   /zoom meeting/i, /meet\.google\.com/i
 ]
+
+
+// Known browsers and their display names
+const BROWSERS = {
+  'Google Chrome': 'Google Chrome',
+  'Safari': 'Safari',
+  'Firefox': 'Firefox',
+  'Brave Browser': 'Brave',
+  'Microsoft Edge': 'Edge',
+  'Opera': 'Opera',
+  'Arc': 'Arc',
+  'Vivaldi': 'Vivaldi',
+  'Chromium': 'Chromium'
+}
+
+let currentBrowserSession = null  // tracks current browser tab session
+
+function parseTabTitle(windowTitle, browserName) {
+  // Chrome/most browsers format: "Page Title - Browser Name"
+  // Safari format: "Page Title — Safari"  
+  const separators = [` - ${browserName}`, ` — ${browserName}`, ` | ${browserName}`]
+  for (const sep of separators) {
+    if (windowTitle.includes(sep)) {
+      return windowTitle.replace(sep, '').trim()
+    }
+  }
+  // Fallback — just remove everything after last " - " or " — "
+  const dashIndex = windowTitle.lastIndexOf(' - ')
+  if (dashIndex > 0) return windowTitle.substring(0, dashIndex).trim()
+  return windowTitle.trim()
+}
+
+function isBrowser(appName) {
+  return Object.keys(BROWSERS).includes(appName)
+}
 
 let currentSession = null      // the app currently in focus
 let activeMeeting = null       // meeting currently in progress
@@ -70,7 +106,49 @@ async function poll() {
       // Start a new session
       currentSession = { app_name: appName, window_title: title, started_at: now }
     }
+    // ── Browser tab tracking ──────────────────────────────────────
+    if (isBrowser(appName)) {
+      const browserName = BROWSERS[appName]
+      const tabTitle = parseTabTitle(title, browserName)
+      
 
+      if (!currentBrowserSession) {
+        currentBrowserSession = { browser: appName, tab_title: tabTitle, started_at: now }
+
+      } else if (currentBrowserSession.tab_title !== tabTitle || currentBrowserSession.browser !== appName) {
+        // Tab changed — close old browser session
+        const duration = now - currentBrowserSession.started_at
+        if (duration > 1000) {
+          const category = await categorizeTab(currentBrowserSession.tab_title)
+          insertBrowserSession({
+            browser: currentBrowserSession.browser,
+            tab_title: currentBrowserSession.tab_title,
+            category,
+            started_at: currentBrowserSession.started_at,
+            ended_at: now,
+            duration_ms: duration
+          })
+        }
+        currentBrowserSession = { browser: appName, tab_title: tabTitle, started_at: now }
+      }
+    } else {
+      // Switched away from browser — close browser session
+      if (currentBrowserSession) {
+        const duration = now - currentBrowserSession.started_at
+        if (duration > 1000) {
+          const category = await categorizeTab(currentBrowserSession.tab_title)
+          insertBrowserSession({
+            browser: currentBrowserSession.browser,
+            tab_title: currentBrowserSession.tab_title,
+            category,
+            started_at: currentBrowserSession.started_at,
+            ended_at: now,
+            duration_ms: duration
+          })
+        }
+        currentBrowserSession = null
+      }
+    }
     // ── Meeting tracking ──────────────────────────────────────────
     const inMeeting = isMeetingWindow(appName, title)
 
