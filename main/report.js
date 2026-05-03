@@ -1,6 +1,6 @@
 const { getTodaySessions, getTodayMeetingEvents, getTodayBrowserSessions } = require('./db')
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY 
+const { getGroqApiKey } = require('./config')
 
 
 // App category lookup — same idea as your Chrome extension
@@ -133,7 +133,7 @@ Keep the tone warm and constructive, not judgmental. Be specific with the number
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
+        'Authorization': `Bearer ${getGroqApiKey()}`
       },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',

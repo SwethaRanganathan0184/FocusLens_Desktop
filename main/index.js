@@ -1,5 +1,6 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') })
 
+const { getGroqApiKey, saveGroqApiKey, hasGroqApiKey } = require('./config')
 const http = require('http')
 const { checkAndRequestPermissions } = require('./permissions')
 const { app, BrowserWindow, ipcMain } = require('electron')
@@ -55,6 +56,17 @@ ipcMain.handle('generate-report', async () => {
   return await generateDailyReport()
 })
 
+// Get current API key status
+ipcMain.handle('get-api-key-status', () => {
+  return { hasKey: hasGroqApiKey() }
+})
+
+// Save API key from UI
+ipcMain.handle('save-api-key', (event, key) => {
+  if (!key || key.trim().length < 10) return { ok: false, error: 'Invalid key' }
+  const saved = saveGroqApiKey(key.trim())
+  return { ok: saved }
+})
 // ── Local HTTP server for Chrome extension ────────────────────────
 const IGNORED_TITLES = [
   'New Tab', 'New tab', 'Open', 'Extensions',

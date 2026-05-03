@@ -1,7 +1,6 @@
 const { getCachedCategory, saveCategoryCache } = require('./db')
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY
-
+const { getGroqApiKey } = require('./config')
 // Predefined category map — matched against tab title keywords
 // NOTE: YouTube removed intentionally — title content determines category
 const CATEGORY_MAP = {
@@ -119,7 +118,7 @@ async function categorizeWithGroq(tabTitle) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
+        'Authorization': `Bearer ${getGroqApiKey()}`
       },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',

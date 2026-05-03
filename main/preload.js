@@ -5,4 +5,6 @@ contextBridge.exposeInMainWorld('focusAPI', {
   getMeetingEvents:   ()  => ipcRenderer.invoke('get-meeting-events'),
   generateReport:     ()  => ipcRenderer.invoke('generate-report'),
   getBrowserSessions: ()  => ipcRenderer.invoke('get-browser-sessions'),
+  getApiKeyStatus:    ()      => ipcRenderer.invoke('get-api-key-status'),
+  saveApiKey:         (key)   => ipcRenderer.invoke('save-api-key', key),
 })

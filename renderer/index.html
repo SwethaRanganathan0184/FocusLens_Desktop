@@ -270,6 +270,25 @@
     #report-content strong { color: var(--text); }
 
     .empty { color: var(--text-dim); font-size: 0.82rem; padding: 20px 0; }
+
+
+    /* ── Settings modal ── */
+    .settings-input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      font-size: 0.85rem;
+      margin: 12px 0;
+      outline: none;
+    }
+    .settings-input:focus { border-color: var(--accent); }
+    .settings-status { font-size: 0.8rem; margin-top: 8px; }
+    .settings-status.success { color: #4fc4a0; }
+    .settings-status.error { color: #e05c5c; }
+    .settings-hint { font-size: 0.78rem; color: var(--text-dim); line-height: 1.6; }
   </style>
 </head>
 <body>
@@ -277,6 +296,7 @@
     <h1><span>Focus</span>Lens</h1>
     <span id="last-updated">Loading...</span>
     <div class="header-right">
+      <button class="theme-toggle" onclick="openSettings()" title="Settings">⚙️</button>
       <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
       <button class="btn btn-secondary" onclick="loadData()">Refresh</button>
       <button class="btn btn-primary" onclick="getReport()">Generate Report</button>
@@ -338,6 +358,35 @@
       </div>
       <div class="modal-body" id="modal-body">
         <div class="empty">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Settings modal -->
+  <div class="modal-overlay" id="settings-modal" onclick="closeSettingsModal(event)">
+    <div class="modal" style="width:480px">
+      <div class="modal-header">
+        <h2>⚙️ Settings</h2>
+        <button class="modal-close" onclick="closeSettingsModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="panel-title" style="margin-bottom:8px">Groq API Key</div>
+        <p class="settings-hint">
+          FocusLens uses Groq to generate your daily AI report and categorize browser tabs.<br><br>
+          Get your free API key at <strong>console.groq.com</strong> → API Keys → Create API Key.
+        </p>
+        <input
+          class="settings-input"
+          type="password"
+          id="api-key-input"
+          placeholder="gsk_..."
+          autocomplete="off"
+        />
+        <div id="settings-status" class="settings-status"></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="saveApiKey()">
+          Save API Key
+        </button>
       </div>
     </div>
   </div>
@@ -462,6 +511,9 @@
       if (e.target === document.getElementById('browser-modal')) closeBrowserModal();
     }
 
+
+    
+
     // ── Load data ──
     async function loadData() {
       const data = await window.focusAPI.getTodaySummary();
@@ -553,8 +605,49 @@
         el.textContent = "Failed to generate report: " + err.message;
       }
     }
+    // ── Settings ──
+    async function openSettings() {
+      const status = await window.focusAPI.getApiKeyStatus()
+      document.getElementById('api-key-input').value = ''
+      document.getElementById('settings-status').textContent = status.hasKey
+        ? '✓ API key is configured' : '⚠ No API key set'
+      document.getElementById('settings-status').className = 'settings-status ' + (status.hasKey ? 'success' : 'error')
+      document.getElementById('settings-modal').classList.add('open')
+    }
 
+    async function saveApiKey() {
+      const key = document.getElementById('api-key-input').value.trim()
+      if (!key) {
+        document.getElementById('settings-status').textContent = 'Please enter an API key'
+        document.getElementById('settings-status').className = 'settings-status error'
+        return
+      }
+      const result = await window.focusAPI.saveApiKey(key)
+      if (result.ok) {
+        document.getElementById('settings-status').textContent = '✓ API key saved successfully!'
+        document.getElementById('settings-status').className = 'settings-status success'
+        setTimeout(closeSettingsModal, 1500)
+      } else {
+        document.getElementById('settings-status').textContent = 'Failed to save key: ' + (result.error || 'unknown error')
+        document.getElementById('settings-status').className = 'settings-status error'
+      }
+    }
+
+    function closeSettingsModal(e) {
+      if (!e || e.target === document.getElementById('settings-modal')) {
+        document.getElementById('settings-modal').classList.remove('open')
+      }
+    }
+
+    // Check API key on startup
+    async function checkApiKey() {
+      const status = await window.focusAPI.getApiKeyStatus()
+      if (!status.hasKey) {
+        setTimeout(openSettings, 1000)
+      }
+    }
     loadData();
+    checkApiKey();
     setInterval(loadData, 30000);
   </script>
 </body>
